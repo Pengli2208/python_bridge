@@ -8,8 +8,6 @@
  
  
 import socket
-import select
-import time 
 import traceback
 
 class CClient:
@@ -22,22 +20,18 @@ class CClient:
         print("Client started!")
         self.register = "register_server"
         self.testsend1 = "test1 message, what we try max time<120"
-        self.time_start = time.time()
-        self.time_end = time.time()
         self.total = 0
         self.cnt = 0
-        
         self.descripors = []
-    # 运行监听方法
+
     def prepareMsgHead(self, fr, to):
-        strsend = str(fr) +":"+ str(to) +":"
+        strsend = str(fr) + ":" + str(to) + ":"
         return strsend
+
     def ExceptionMsg(self, e):
         print('repr(e):\t', repr(e))
         #print('traceback.print_exc():', traceback.print_exc())
         #print('traceback.format_exc():\n%s' % traceback.format_exc())
-    # 运行监听方法 
-
 
     def runtest2(self, id, target):
         self.id = id
@@ -68,7 +62,6 @@ class CClient:
                     self.id = ret[2]
                     print('id is updated:', self.id)
                 else:
-                    #print('rev message', str_get)
                     str_get = ret[1]+":"+ret[0]+":"+ret[2]
                     len1 = self.client.send(str_get.encode('utf8'))
                     if len1 < len(str_get):

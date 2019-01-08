@@ -9,10 +9,9 @@
  
  
 import socket
-import select
-import time 
+import time
 import traceback
-from multiprocessing import Process, Lock
+from multiprocessing import Process
 
 class CClient:
         # 初始化 传入监听端口即可
@@ -29,10 +28,11 @@ class CClient:
         self.cnt = 1        
         self.register = "register_server"
         self.descripors =[]
-    # 运行监听方法
+        
     def prepareMsgHead(self, fr, to):
         strsend = str(fr) + ":" + str(to) + ":"
         return strsend
+
     def ExceptionMsg(self, e):
         print('repr(e):\t', repr(e))
         #print('traceback.print_exc():', traceback.print_exc())
@@ -48,7 +48,6 @@ class CClient:
         self.time_end = time.time()
         t1 = (self.time_end-self.time_start)*1000
         self.total = self.total + t1
-        #print('rev:', str_get)
         if self.cnt % cntavg == 1:
             print(str(self.cnt), 'time cost', self.total/self.cnt, 'ms')
 
@@ -89,6 +88,11 @@ class CClient:
             time.sleep(0.05)
 
 if __name__ == '__main__':
+    processList = []
     for i in range(10):
-        Process(target=CClient('127.0.0.1', 5555).runtest1, args=('0', 'host', 40)).start()
- #   CClient('127.0.0.1', 5555).runtest1('0', 'host')
+        proc = Process(target=CClient('127.0.0.1', 5555).runtest1, args=('0', 'host', 40))
+        processList.append(proc)
+        proc.start()
+
+    for inst in processList:
+        inst.join()

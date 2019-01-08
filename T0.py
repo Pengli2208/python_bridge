@@ -9,7 +9,6 @@
  
 import socket
 import select
-import time 
 from multiprocessing import Process, Lock
 #import traceback
 
@@ -31,6 +30,7 @@ class CServer:
         self.descripors = [self.srvsock]
         self.mapdiction = {}
         self.uniqpost = ''
+        self.processlist = []
         print("Server started!")
 
     def ExceptionMsg(self, e):
@@ -86,7 +86,6 @@ class CServer:
         print('add one map:', ret2, ",", self.mapdiction[ret2])
         lck.release()
 
-
     def forward(self, msg, sock, lck):
         uniq = ''
         try:
@@ -105,10 +104,9 @@ class CServer:
                 sock.send(msg.encode('utf8'))
                 lck.release()
             else:
-                print('not found socket')
-        return uniq
+                print('not found socket')        
         #print('handle one message')
-
+        return uniq
 
     def acceptaction(self, lck, num):
         host = [self.srvsock]
@@ -120,61 +118,21 @@ class CServer:
                 # 添加连接
                 lck.acquire()
                 print('new connected', newsock)
-                self.descripors.append(newsock)
+                self.descripors.append(newsock)                
+                process1 = Process(target=self.handlerec, args=(newsock, lck))
+                self.processlist.append(process1)
                 lck.release()
-                Process(target=self.handlerec, args=(newsock, lck)).start()
+                process1.start()
             except Exception as e:
                 self.ExceptionMsg(e)
                 break
 
-
-    # 运行监听方法
     def run(self):
         lock = Lock()
         self.acceptaction(lock, self.num)
-        
- 
-    # 建立一个新的连接客户机
-    def accept_new_connection(self):
-        # 接收请求
-        newsock, (_, _) = self.srvsock.accept()
-        # 添加连接
-        print('new connected', newsock)
-        self.descripors.append(newsock)
-        #newsock.send("You are Connected\r\n".encode('utf8'))
-        #str_send = 'Client joined %s:%s' % (remhost, remport)
-        #self.broadcast_str(str_send, newsock)
- 
-    # 广播函数
-    def broadcast_str(self, str_send, my_sock):
-        # 遍历已有连接
-        exceptval = '126C'
-        try:
-            ret = str_send.split(':', 2)
-        except Exception as e:
-            self.ExceptionMsg(e)
-            return
+        for inst in self.processlist:
+            inst.join()
 
-        if str_send.find('register_server:') != -1:            
-            self.mapdiction[ret[1]] = my_sock
-            print('add one map:', ret[1], my_sock)
-        else:
-            sock = None
-            if ret[1] in self.mapdiction:
-                sock = self.mapdiction.get(ret[1], None)
-                if sock is not None:
-                    len1 = sock.send(str_send.encode('utf8'))
-                    if len1 < len(str_send):
-                        print('send error,', str_send)
-                    if str_send.find(exceptval) != -1:
-                        print('sendmsg:', str_send)
-                else:
-                    print('not found socket')
-            else:
-                print('not find target')
-            #for sock in self.descripors:
-            #    if sock != self.srvsock and sock != my_sock:
-            #        sock.send(str_send.encode('utf8'))
 
 if __name__ == '__main__':
     # 实例化监听服务器
