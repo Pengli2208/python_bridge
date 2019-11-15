@@ -11,8 +11,10 @@ import socket
 import select
 import base64
 import time
+import os
 from multiprocessing import Process, Lock
-#import traceback
+
+import traceback
 
 
 
@@ -34,21 +36,26 @@ class CServer:
         self.mapdiction = {}
         self.uniqpost = ''
         self.processlist = []
-        print("Server started!")
+        self.printf("Server started!")
+
+    def printf(self, *args):
+        print(time.strftime("%Y-%m-%d %H-%M-%S"), *args)
+
 
     def ExceptionMsg(self, e):
         print('repr(e):\t', repr(e))
-        #print('traceback.print_exc():', traceback.print_exc())
-        #print('traceback.format_exc():\n%s' % traceback.format_exc())
+        print('traceback.print_exc():', traceback.print_exc())
+        print('traceback.format_exc():\n%s' % traceback.format_exc())
 
     def handlerec(self, sock, lck):
-        print('new rec handler', sock)
+        self.printf('new rec handler', sock)
         while True:
             try:
                 str_rev = sock.recv(1024).decode('utf8')
                 #host, port = sock.getpeername()
             except Exception as e:
                 str_rev = ''
+                self.printf("rev exception")
                 self.ExceptionMsg(e)
                 pass
             # 检测是否断开连接
@@ -64,39 +71,40 @@ class CServer:
                 break
             else:
                 #newstr = '[%s:%s] %s' % (host, port, str_rev)
-                #print('rev:',newstr)
+                self.printf('rev: ',str_rev)
                 self.forward(str_rev, sock, lck)
 
     def getuniqconnection(self, sock):
         host, port = sock.getpeername()
         ret = host.split('.')
         uniqpost = str(65536*(int(ret[2])*256 + int(ret[3])) + port)
-        print("uniqpost", uniqpost)
+        self.printf("uniqpost", uniqpost)
         return uniqpost
 
     def registerconnection(self, sock, lck, ret0, ret1):
         lck.acquire()
-        filename = "register.txt"
+        
+        filename = os.path.join(os.getcwd(), "register.txt")
         fo = open(filename,'a+')
         ret2 = ret1
         if ret2 == 'host':
             self.mapdiction[ret2] = sock
         else:
             keys = bytes(ret2, encoding='utf8') 
-            pc = base64.encodestring(keys)  # 初始化密钥
+            pc = base64.encodebytes(keys)  # 初始化密钥
             pc1 = base64.b64decode(pc)
             pc1 = pc1.decode(encoding='utf-8', errors='strict')
             pc = pc.decode(encoding='utf-8', errors='strict')
-            print("reg:", ret2, " code:", pc, " decode:",pc1)
+            self.printf("reg:", ret2, " code:", pc, " decode:",pc1)
             fo.write("time," + time.strftime("%Y-%m-%d %H-%M-%S")+"\r\n")
             fo.write('socket, '+ str(socket)+"\r\n")
             fo.write("reg," + ret2 +",code," + str(pc) +",decode," +str(pc1)+"\r\n")
             self.mapdiction[ret2] = sock
             msg = ret0+':'+pc+':'+ pc
-            print('send msg, ', msg)
+            self.printf('send msg, ', msg)
             fo.write('send msg,'+msg +"\r\n")
             sock.send(msg.encode('utf8'))
-            print('add one map:', ret2, ",", self.mapdiction[ret2])
+            self.printf('add one map:', ret2, ",", self.mapdiction[ret2])
         
         fo.close()
         lck.release()
@@ -106,6 +114,7 @@ class CServer:
         try:
             ret = msg.split(':', 2)
         except Exception as e:
+            self.printf("forward exception")
             self.ExceptionMsg(e)
             return
         
@@ -119,26 +128,28 @@ class CServer:
                 sock.send(msg.encode('utf8'))
                 lck.release()
             else:
-                print('not found socket')        
+                self.printf('not found socket')        
         #print('handle one message')
         return uniq
 
     def acceptaction(self, lck, num):
         host = [self.srvsock]
-        print("rev num:", num)
+        self.printf("rev num:", num)
         while True:
             (_, _, _) = select.select(host, [], [])
             try:
                 newsock, (_, _) = self.srvsock.accept()
                 # 添加连接
                 lck.acquire()
-                print('new connected', newsock)
+                self.printf('new connected', newsock)
                 self.descripors.append(newsock)                
                 process1 = Process(target=self.handlerec, args=(newsock, lck))
                 self.processlist.append(process1)
                 lck.release()
                 process1.start()
             except Exception as e:
+                
+                self.printf("acceptaction exception")
                 self.ExceptionMsg(e)
                 break
 
